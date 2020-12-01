@@ -1,4 +1,4 @@
-# Парсер сайта https://xn--80afcdbalict6afooklqi5o.xn--p1ai/ по естественнонаучному и технологическому направлению.
+# Парсер сайта (президентскиегранты.рф)[https://xn--80afcdbalict6afooklqi5o.xn--p1ai/] по естественнонаучному и технологическому направлению.
 ## Download packages
 ```
 - sudo apt update
