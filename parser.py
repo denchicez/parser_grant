@@ -302,10 +302,10 @@ def get_content_from_main(html):
             try:
                 winner_site=winner_contacts.find('a',class_='winner__details-contacts-item winner__details-contacts-item--link').get('href') #ccылка на веб-сайт
             except:
-                winner_site=None #ccылка на веб-сайт
+                winner_site='Нет'#ccылка на веб-сайт
             #################################
             try:
-                if(winner_site==None):
+                if(winner_site==None or winner_site=='Нет'):
                     site_is_work=False
                 else:
                     if(urlChecker(winner_site)==False):    
@@ -332,9 +332,15 @@ def get_content_from_main(html):
                 HTML2=get_html(winner_site).text
                 soup2=BeautifulSoup(HTML2,'html.parser') 
                 all_code = ['UTF-8','cp1251','latin1'] #возможные виды кодировок
-                title_org_site=(soup2.find('title')).text #title с кодировкой сайта 
-                title_org_site,code1,code2 = decode(title_org_site)
-                site_correct=is_site_correct(winner_site,oranization,code1,code2)
+                try:
+                    title_org_site=(soup2.find('title')).text #title с кодировкой сайта 
+                    title_org_site,code1,code2 = decode(title_org_site)
+                    site_correct=is_site_correct(winner_site,oranization,code1,code2)
+                except:
+                    code1='UTF-8'
+                    code2='UTF-8'
+                    title_org_site='Не найдено' 
+                    site_correct='False'
                 if(title_org_site!='У сайта неизвестная кодировка' and title_org_site!='Не найдено'):
                     #парсинг description сайта c декодировкой
                     podpis_youtube,podpis_vk,podpis_inst, youtubes,vks,insts=social_links=get_social_links(get_links_from_page(winner_site))
@@ -386,7 +392,7 @@ def get_content_from_main(html):
                 keywords_org_site='Cайт не работает или не существует'
             #################################
             all_grants.append({
-                'размер гранта': project_price,
+                'размер гранта' : project_price,
                 'перечислено фондом': fond_invest,
                 'конкурс':contest,
                 'регион получателя гранта':region,
@@ -431,13 +437,11 @@ def parse(URL):
         URL_COUNT='https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString=&Statuses%5B0%5D.Selected=true&Statuses%5B0%5D.Name=%D0%BF%D0%BE%D0%B1%D0%B5%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C+%D0%BA%D0%BE%D0%BD%D0%BA%D1%83%D1%80%D1%81%D0%B0'
         URL_COUNT = URL_COUNT.strip()
         html = get_html(URL_COUNT)
-        pages_count = get_pages_count(html.text)
-        
+        pages_count = get_pages_count(html.text)        
     for page in range(1,pages_count+1): #pages_count
         print(f'Парсинг страницы {page} из {pages_count}...')
         html=get_html(URL, params={'page': page})
         get_content_from_main(html.text)
-
 start_time = time.time()
 token = "3fb7074e3fb7074e3fb7074e373fc20ea433fb73fb7074e6000a2640396190c4d381005"  # Сервисный ключ доступа
 session = vk.Session(access_token=token)
