@@ -413,7 +413,6 @@ def get_content_from_main(html):
                 description_org_site='Cайт не работает или не существует'
                 keywords_org_site='Cайт не работает или не существует'
             #################################
-            print(winner_target)
             all_grants.append({
                 'размер гранта' : delete_extra_spaces(project_price),
                 'перечислено фондом': delete_extra_spaces(fond_invest),
