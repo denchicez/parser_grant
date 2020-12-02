@@ -11,7 +11,24 @@ URL = 'https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?Sea
 HEADERS = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0', 'accept': '*/*'}
 HOST = 'https://xn--80afcdbalict6afooklqi5o.xn--p1ai/'
 FILE = 'ans.csv'
-
+def delete_extra_spaces(s):
+    s=s.replace('Краткое описание','')
+    s=s.replace('Обоснование социальной значимости','')
+    s=s.replace('Цель\n','')
+    s=s.replace('Задачи\n','')
+    s=s.replace('География проекта','')
+    s=s.replace('Целевые группы','')
+    st=""
+    s=s.strip()
+    for i in range(len(s)):
+        n=s.find(" ")
+        if n==-1:
+            st=st+s
+            break
+        st=st+s[:n]+' '
+        s=s[n+1:]
+        s=s.lstrip()
+    return st.rstrip()
 def get_html(url,params=None): # делаем запрос на html страничку
     try:
         r = requests.get(url, headers=HEADERS, params=params)
@@ -285,7 +302,7 @@ def get_content_from_main(html):
             number_request = all_data[3].find('span',class_='winner-info__list-item-text').text      # номер заявки
             date_request = all_data[4].find('span',class_='winner-info__list-item-text').text        # дата подачи
             date_realization = all_data[5].find('span',class_='winner-info__list-item-text').text    # срок реализации
-            oranization = all_data[6].find('span',class_='winner-info__list-item-text').text         # организация
+            organization = all_data[6].find('span',class_='winner-info__list-item-text').text         # организация
             inn = all_data[7].find('span',class_='winner-info__list-item-text').text                 # инн орагнизации
             orgn = all_data[8].find('span',class_='winner-info__list-item-text').text                # огрн орнанизации
             sofinance = soup_item.find_all('span',class_='circle-bar__info-item-number')[1].text     # софинансирование
@@ -335,7 +352,7 @@ def get_content_from_main(html):
                 try:
                     title_org_site=(soup2.find('title')).text #title с кодировкой сайта 
                     title_org_site,code1,code2 = decode(title_org_site)
-                    site_correct=is_site_correct(winner_site,oranization,code1,code2)
+                    site_correct=is_site_correct(winner_site,organization,code1,code2)
                 except:
                     code1='UTF-8'
                     code2='UTF-8'
@@ -377,7 +394,12 @@ def get_content_from_main(html):
                         keywords_org_site='Не найдено'
                     if(keywords_org_site==''):
                         keywords_org_site='Отсутсвует'
-                    site_correct=is_site_correct(HTML2,oranization,code1,code2)
+                    a=is_site_correct(HTML2,organization,code1,code2)
+                    b=is_site_correct(HTML2,winner_summary,code1,code2)
+                    if(a==True or b==True):
+                        site_correct=True
+                    else:
+                        site_correct=False
                         
                 #неизвестная кодировка сайта
                 else:
@@ -391,29 +413,30 @@ def get_content_from_main(html):
                 description_org_site='Cайт не работает или не существует'
                 keywords_org_site='Cайт не работает или не существует'
             #################################
+            print(winner_target)
             all_grants.append({
-                'размер гранта' : project_price,
-                'перечислено фондом': fond_invest,
-                'конкурс':contest,
-                'регион получателя гранта':region,
-                'направление':direction,
-                'название проекта':title,
-                'рейтинг проекта':rating,
-                'номер заявки':number_request,
-                'дата подачи':date_request,
-                'срок реализации':date_realization,
-                'организация':oranization,
-                'инн орагнизации':inn,
-                'огрн организации':orgn,
-                'софинансирование':sofinance,
-                'краткое описание':winner_summary,
-                'цель':winner_aim,
-                'задачи':winner_tasks,
-                'социальная значимость':winner_social,
-                'география проекта':winner_geo,
-                'целевая группа проекта':winner_target,
-                'адрес организации':winner_adress,
-                'веб-сайт организации':winner_site,
+                'размер гранта' : delete_extra_spaces(project_price),
+                'перечислено фондом': delete_extra_spaces(fond_invest),
+                'конкурс':delete_extra_spaces(contest),
+                'регион получателя гранта': delete_extra_spaces(region),
+                'направление': delete_extra_spaces(direction),
+                'название проекта':delete_extra_spaces(title),
+                'рейтинг проекта':delete_extra_spaces(rating),
+                'номер заявки':delete_extra_spaces(number_request),
+                'дата подачи':delete_extra_spaces(date_request),
+                'срок реализации':delete_extra_spaces(date_realization),
+                'организация':delete_extra_spaces(organization),
+                'инн орагнизации':delete_extra_spaces(inn),
+                'огрн организации':delete_extra_spaces(orgn),
+                'софинансирование':delete_extra_spaces(sofinance),
+                'краткое описание':delete_extra_spaces(winner_summary),
+                'цель':delete_extra_spaces(winner_aim),
+                'задачи':delete_extra_spaces(winner_tasks),
+                'социальная значимость':delete_extra_spaces(winner_social),
+                'география проекта':delete_extra_spaces(winner_geo),
+                'целевая группа проекта':delete_extra_spaces(winner_target),
+                'адрес организации':delete_extra_spaces(winner_adress),
+                'веб-сайт организации':delete_extra_spaces(winner_site),
                 'Работает ли сайт?':site_is_work,
                 'title сайта организации': title_org_site,           
                 'description сайта организации': description_org_site,
