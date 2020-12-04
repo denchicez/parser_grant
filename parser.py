@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*- 
 from bs4 import BeautifulSoup
 import vk
 import requests
@@ -6,11 +7,27 @@ import sys
 import validators
 import urllib.request
 import json
+from joblib import Parallel, delayed
 import time
 URL = 'https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString=&Statuses%5B0%5D.Selected=true&Statuses%5B0%5D.Name=%D0%BF%D0%BE%D0%B1%D0%B5%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C+%D0%BA%D0%BE%D0%BD%D0%BA%D1%83%D1%80%D1%81%D0%B0'
 HEADERS = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0', 'accept': '*/*'}
 HOST = 'https://xn--80afcdbalict6afooklqi5o.xn--p1ai/'
 FILE = 'ans.csv'
+def checkNet():
+    try:
+        requests.get("http://www.google.com",timeout=10)
+        return 1
+    except requests.ConnectionError:
+        return 0
+def aboutli(data):
+    if(str(data).find('</li>')!=-1):
+        new_data=''
+        str_li=data.find_all('li')
+        for stroka in str_li:
+            new_data=new_data+(stroka.text.rstrip().rstrip())+'\n'
+        return new_data
+    else:
+        return data.text
 def delete_extra_spaces(s):
     s=s.replace('Краткое описание','')
     s=s.replace('Обоснование социальной значимости','')
@@ -30,13 +47,13 @@ def delete_extra_spaces(s):
         s=s.lstrip()
     return st.rstrip()
 def get_html(url,params=None): # делаем запрос на html страничку
+    while(checkNet()==0):
+        print('Отсутсвие интернет соединение. Подключите интернет для продолжения работы')
     try:
-        r = requests.get(url, headers=HEADERS, params=params)
+        r = requests.get(url, headers=HEADERS, params=params,timeout=60) #timeout
         return r
     except:
-        print('ЭКСТРЕННОЕ СОХРАНЕНИЕ')
-        file_saving()
-        sys.exit()
+        return 'ПРОПУСК'
 def getVariantsOfWords(word): # получаем слово в нормальной кодировке]
     trans = '[]{}0123456789.,!@\"#№;$%^:&?*()\'\\/|' # 'плохие' символы
     for c in trans:
@@ -112,11 +129,10 @@ def get_true_followers(s):
         return int(float(s))
     except:
         return 0
-def get_links_from_page(url):
+def get_links_from_page(HTML2):
     links = set()
     try:
-        resp = urllib.request.urlopen(url)
-        soup = BeautifulSoup(resp, 'html.parser')
+        soup = BeautifulSoup(HTML2, 'html.parser')
     except:
         return links
     try:
@@ -149,8 +165,12 @@ def InstFollowers(url_name):
     try:
         url_name=url_name+'?__a=1'
         HTML2=get_html(url_name).text
-        data = json.loads(HTML2)
-        return(data['graphql']['user']['edge_followed_by']['count'])
+        if(HTML2!='ПРОПУСК'):
+            HTML2=HTML2.text
+            data = json.loads(HTML2)
+            return(data['graphql']['user']['edge_followed_by']['count'])
+        else:
+            return 0
     except:
         return 0
 def find_number_youtube(index,string): # ищем следующее число после строки
@@ -166,13 +186,17 @@ def find_number_youtube(index,string): # ищем следующее число 
     return stroka
 def YoutubeFollowers(url):
     try:
-        HTML_youtube=get_html(url).text
-        soup_youtube=str(BeautifulSoup(HTML_youtube,'html.parser'))
-        ind = soup_youtube.find('subscriberCountText')
-        if(ind==-1):
-            return 0
+        HTML_youtube=get_html(url)
+        if(HTML_youtube!='ПРОПУСК'):
+            HTML_youtube=HTML_youtube.text
+            soup_youtube=str(BeautifulSoup(HTML_youtube,'html.parser'))
+            ind = soup_youtube.find('subscriberCountText')
+            if(ind==-1):
+                return 0
+            else:
+                return (find_number_youtube(ind,soup_youtube))
         else:
-            return (find_number_youtube(ind,soup_youtube))
+            return 0
     except:
         return 0
 def get_social_links(links):
@@ -237,8 +261,10 @@ def urlChecker(url): #работает ли сайт?
     except:
         return False
     try:
-        r = requests.head(url)
-        return r.status_code == 200
+        while(checkNet()==0):
+            print('Отсутсвие интернет соединение. Подключите интернет для продолжения работы')
+        r = requests.head(url,timeout=60)
+        return (r.status_code == 200 or r.status_code==403 or r.status_code==418)
     except:
         return False
 def decode(string):
@@ -278,23 +304,22 @@ def is_site_correct(html_str, all_names,code1,code2):
         except:
             return False
     return False
-def get_content_from_main(html):
-    soup = BeautifulSoup(html, 'html.parser')
-    cards = soup.find('div',class_='table table--p-present table--projects')
-    items=cards.find_all('a')
+def process(item):
     URL = 'https://xn--80afcdbalict6afooklqi5o.xn--p1ai'
-    for item in items:
-        if(item!=None):
-            project_price=item.find('div',class_='projects__price').text                             #размер гранта
-            fond_invest=item.find('span',class_='projects__str-no-wrap').text                        #перечислено фондом
-            contest=item.find('div',class_='contest').text                                           #конкурс
-            region=(item.find('div',class_='projects__descr')).find('div').text                      #регион получателя гранта
-            direction=item.find('div',class_='direction').text                                       #направление
-            title=item.find('div',class_='projects__title').text                                     #название проекта
-            ####################################################################
-            url_item = URL+item.get('href')
-            url_item = url_item.strip()
-            html_item = (get_html(url_item)).text
+    if(item!=None):
+        project_price=item.find('div',class_='projects__price').text                             #размер гранта
+        fond_invest=item.find('span',class_='projects__str-no-wrap').text                        #перечислено фондом
+        contest=item.find('div',class_='contest').text                                           #конкурс
+        region=(item.find('div',class_='projects__descr')).find('div').text                      #регион получателя гранта
+        direction=item.find('div',class_='direction').text                                       #направление
+        title=item.find('div',class_='projects__title').text                                     #название проекта
+       ####################################################################
+        url_item = URL+item.get('href')
+        url_item = url_item.strip()
+        print(url_item)
+        html_item = (get_html(url_item))
+        if(html_item!='ПРОПУСК'):
+            html_item=html_item.text
             soup_item = BeautifulSoup(html_item, 'html.parser')
             all_data = soup_item.find_all('li',class_='winner-info__list-item')
             ####################################################################
@@ -308,13 +333,13 @@ def get_content_from_main(html):
             sofinance = soup_item.find_all('span',class_='circle-bar__info-item-number')[1].text     # софинансирование
             #дополнительная инфа
             all_dop_data=soup_item.find_all('div',class_='winner__details-box js-ancor-box')
-            winner_summary=all_dop_data[0].text                                                      # краткое описание
-            winner_aim=all_dop_data[1].text                                                          # цель
-            winner_tasks=all_dop_data[2].text                                                        # задачи
-            winner_social=all_dop_data[3].text                                                       # социальная значимость 
-            winner_geo=all_dop_data[4].text                                                          # география проекта
-            winner_target=all_dop_data[5].text                                                       # целевая группа проекта
-            winner_contacts=all_dop_data[6]                                                          # контакты организации
+            winner_summary=aboutli(all_dop_data[0])                                                      # краткое описание
+            winner_aim=aboutli(all_dop_data[1])                                                          # цель
+            winner_tasks=aboutli(all_dop_data[2])                                                        # задачи
+            winner_social=aboutli(all_dop_data[3])                                                      # социальная значимость 
+            winner_geo=aboutli(all_dop_data[4])                                                          # география проекта
+            winner_target=aboutli(all_dop_data[5])                                                       # целевая группа проекта
+            winner_contacts=all_dop_data[6]                                                         # контакты организации
             winner_adress=winner_contacts.find('span',class_='winner__details-contacts-item').text   # адрес организации  
             try:
                 winner_site=winner_contacts.find('a',class_='winner__details-contacts-item winner__details-contacts-item--link').get('href') #ccылка на веб-сайт
@@ -333,6 +358,9 @@ def get_content_from_main(html):
                             if(winner_site[:5]=='http:'):
                                 winner_site= 'https'+winner_site[4-(len(winner_site)):]
                                 site_is_work=urlChecker(winner_site)
+                                if(site_is_work==False):
+                                    winner_site=winner_site.replace('www.','')
+                                    site_is_work=urlChecker(winner_site)
                     else:
                         site_is_work=True
             except:
@@ -346,67 +374,74 @@ def get_content_from_main(html):
             links_inst='Нет аккаунта'
             #парсинг title, keywords, description           
             if(site_is_work==True):
-                HTML2=get_html(winner_site).text
-                soup2=BeautifulSoup(HTML2,'html.parser') 
-                all_code = ['UTF-8','cp1251','latin1'] #возможные виды кодировок
-                try:
-                    title_org_site=(soup2.find('title')).text #title с кодировкой сайта 
-                    title_org_site,code1,code2 = decode(title_org_site)
-                    site_correct=is_site_correct(winner_site,organization,code1,code2)
-                except:
-                    code1='UTF-8'
-                    code2='UTF-8'
-                    title_org_site='Не найдено' 
-                    site_correct='False'
-                if(title_org_site!='У сайта неизвестная кодировка' and title_org_site!='Не найдено'):
-                    #парсинг description сайта c декодировкой
-                    podpis_youtube,podpis_vk,podpis_inst, youtubes,vks,insts=social_links=get_social_links(get_links_from_page(winner_site))
-                    if(podpis_youtube==0):
-                        podpis_youtube='Нет аккаунта'
-                    else:
-                        links_youtube=youtubes 
-                    if(podpis_vk==0):
-                        podpis_vk='Нет аккаунта'
-                    else:
-                        links_vk=vks 
-                    if(podpis_inst==0):
-                        podpis_inst='Нет аккаунта'
-                    else:
-                        links_inst=insts
+                HTML2=get_html(winner_site)
+                if(HTML2!='ПРОПУСК'):
+                    HTML2=HTML2.text
+                    soup2=BeautifulSoup(HTML2,'html.parser') 
+                    all_code = ['UTF-8','cp1251','latin1'] #возможные виды кодировок
                     try:
-                        description_org_site=soup2.find(attrs={"name":"description"})
-                        description_org_site=str(description_org_site)
-                        description_org_site=BeautifulSoup(description_org_site, 'html.parser')
-                        description_org_site=description_org_site.meta['content']
-                        description_org_site=description_org_site.encode(code1).decode(code2)
+                        title_org_site=(soup2.find('title')).text #title с кодировкой сайта 
+                        title_org_site,code1,code2 = decode(title_org_site)
+                        site_correct=is_site_correct(winner_site,organization,code1,code2)
                     except:
-                        description_org_site='Не найдено'
-                    if(description_org_site==''):
-                        description_org_site='Отсутсвует'
-                    #парсинг keywords сайта c декодировкой
-                    try:
-                       keywords_org_site=soup2.find(attrs={"name":"keywords"})
-                       keywords_org_site=str(keywords_org_site)
-                       keywords_org_site = BeautifulSoup(keywords_org_site, 'html.parser')
-                       keywords_org_site=keywords_org_site.meta['content']
-                       keywords_org_site=keywords_org_site.encode(code1).decode(code2)
-                    except:
-                        keywords_org_site='Не найдено'
-                    if(keywords_org_site==''):
-                        keywords_org_site='Отсутсвует'
-                    a=is_site_correct(HTML2,organization,code1,code2)
-                    b=is_site_correct(HTML2,winner_summary,code1,code2)
-                    if(a==True or b==True):
-                        site_correct=True
+                        code1='UTF-8'
+                        code2='UTF-8'
+                        title_org_site='Не найдено' 
+                        site_correct='False'
+                    if(title_org_site!='У сайта неизвестная кодировка' and title_org_site!='Не найдено'):
+                        #парсинг description сайта c декодировкой
+                        podpis_youtube,podpis_vk,podpis_inst, youtubes,vks,insts=social_links=get_social_links(get_links_from_page(HTML2))
+                        if(podpis_youtube==0):
+                            podpis_youtube='Нет аккаунта'
+                        else:
+                            links_youtube=youtubes 
+                        if(podpis_vk==0):
+                            podpis_vk='Нет аккаунта'
+                        else:
+                            links_vk=vks 
+                        if(podpis_inst==0):
+                            podpis_inst='Нет аккаунта'
+                        else:
+                            links_inst=insts
+                        try:
+                            description_org_site=soup2.find(attrs={"name":"description"})
+                            description_org_site=str(description_org_site)
+                            description_org_site=BeautifulSoup(description_org_site, 'html.parser')
+                            description_org_site=description_org_site.meta['content']
+                            description_org_site=description_org_site.encode(code1).decode(code2)
+                        except:
+                            description_org_site='Не найдено'
+                        if(description_org_site==''):
+                            description_org_site='Отсутсвует'
+                        #парсинг keywords сайта c декодировкой
+                        try:
+                           keywords_org_site=soup2.find(attrs={"name":"keywords"})
+                           keywords_org_site=str(keywords_org_site)
+                           keywords_org_site = BeautifulSoup(keywords_org_site, 'html.parser')
+                           keywords_org_site=keywords_org_site.meta['content']
+                           keywords_org_site=keywords_org_site.encode(code1).decode(code2)
+                        except:
+                            keywords_org_site='Не найдено'
+                        if(keywords_org_site==''):
+                            keywords_org_site='Отсутсвует'
+                        a=is_site_correct(HTML2,organization,code1,code2)
+                        b=is_site_correct(HTML2,winner_summary,code1,code2)
+                        if(a==True or b==True):
+                            site_correct=True
+                        else:
+                            site_correct=False
+                            
+                    #неизвестная кодировка сайта
                     else:
-                        site_correct=False
-                        
-                #неизвестная кодировка сайта
+                        site_correct='False'
+                        title_org_site='Cайт не работает или не существует'
+                        description_org_site='У сайта неизвестная кодировка'
+                        keywords_org_site='У сайта неизвестная кодировка'
                 else:
-                    site_correct='False'
-                    title_org_site='Cайт не работает или не существует'
-                    description_org_site='У сайта неизвестная кодировка'
-                    keywords_org_site='У сайта неизвестная кодировка'
+                    site_correct='Отключение интернета во время получение информации. ERROR.'
+                    title_org_site='Отключение интернета во время получение информации. ERROR.'
+                    description_org_site='Отключение интернета во время получение информации. ERROR.'
+                    keywords_org_site='Отключение интернета во время получение информации. ERROR.'
             else:
                 site_correct='False'
                 title_org_site='Cайт не работает или не существует'
@@ -446,24 +481,41 @@ def get_content_from_main(html):
                 'Количество подписчиков VK': podpis_vk,
                 'Ссылки на соц. сети в VK': links_vk, #
                 'Количество подписчиков youtube': podpis_youtube,
-                'Ссылки на соц. сети в youtube': links_youtube, #           
+                'Ссылки на соц. сети в youtube': links_youtube, # 
             })
+def get_content_from_main(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    cards = soup.find('div',class_='table table--p-present table--projects')
+    items=cards.find_all('a')
+    Parallel(n_jobs=1, verbose=100)(delayed(process)(item) for item in items)
 def parse(URL):
     URL = URL.strip()
     try:
         URL_COUNT='https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString=&Statuses%5B0%5D.Selected=true&Statuses%5B0%5D.Name=%D0%BF%D0%BE%D0%B1%D0%B5%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C+%D0%BA%D0%BE%D0%BD%D0%BA%D1%83%D1%80%D1%81%D0%B0&&page=501'
         URL_COUNT = URL_COUNT.strip()
         html = get_html(URL_COUNT)
-        pages_count = get_pages_count(html.text)
+        if(html!='ПРОПУСК'):
+            pages_count = get_pages_count(html.text)
+        else:
+            print('Нет доступа к интернету, перезапустите программу когда он появится...')
+            sys.exit()
     except:
         URL_COUNT='https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString=&Statuses%5B0%5D.Selected=true&Statuses%5B0%5D.Name=%D0%BF%D0%BE%D0%B1%D0%B5%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C+%D0%BA%D0%BE%D0%BD%D0%BA%D1%83%D1%80%D1%81%D0%B0'
         URL_COUNT = URL_COUNT.strip()
         html = get_html(URL_COUNT)
-        pages_count = get_pages_count(html.text)        
-    for page in range(1,pages_count+1): #pages_count
+        if(html!='ПРОПУСК'):
+            pages_count = get_pages_count(html.text)
+        else:
+            print('Нет доступа к интернету, перезапустите программу когда он появится...')
+            sys.exit()      
+    for page in range(1,1+1): #pages_count
         print(f'Парсинг страницы {page} из {pages_count}...')
         html=get_html(URL, params={'page': page})
-        get_content_from_main(html.text)
+        if(html!='ПРОПУСК'):
+            print('Страница пролучена...')
+            get_content_from_main(html.text)
+        else:
+            print('Страница не найдена...')
 start_time = time.time()
 token = "3fb7074e3fb7074e3fb7074e373fc20ea433fb73fb7074e6000a2640396190c4d381005"  # Сервисный ключ доступа
 session = vk.Session(access_token=token)
