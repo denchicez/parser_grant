@@ -510,8 +510,13 @@ def get_content_from_main(html):
             url_item = URL+item.get('href')
             url_item = url_item.strip()
             urls_items.append(url_item)
-    all_grants=all_grants+Parallel(n_jobs=8, verbose=100)(delayed(process)(url_item) for url_item in urls_items)
-
+    try:
+        all_grants=all_grants+Parallel(n_jobs=8, verbose=100)(delayed(process)(url_item) for url_item in urls_items)
+    except:
+        try:                                                                                                               # это убрать  
+            all_grants=all_grants+Parallel(n_jobs=1, verbose=100)(delayed(process)(url_item) for url_item in urls_items)   # это убрать
+        except:                                                                                                            # это убрать
+            print('Не хватает мощности')                                                                                   # -tab
 def parse(URL):
     URL = URL.strip()
     try:
