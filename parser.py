@@ -450,6 +450,8 @@ def process(url_item): #по ссылке ищем всю информацию �
             description_org_site='Cайт не работает или не существует'
             keywords_org_site='Cайт не работает или не существует'
         #################################
+        if(podpis_youtube==0):
+           podpis_youtube='Нет аккаунта'
         return({
             'Год конкурса гранта': Found_year(delete_extra_spaces(contest)),
             'размер гранта' : delete_extra_spaces(project_price),
