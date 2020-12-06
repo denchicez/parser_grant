@@ -329,7 +329,6 @@ def process(url_item): #по ссылке ищем всю информацию �
             new_find=title
         url_new_data='https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString='+new_find  # ссылка на изначальную страницу                                          
         url_new_data=url_new_data.strip() 
-        print(url_new_data)
         html_new_get=(get_html(url_new_data)).text
         soup_new_get=BeautifulSoup(html_new_get, 'html.parser')
         try:
