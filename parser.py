@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*- 
+#подключаем библиотеки
 from bs4 import BeautifulSoup
 import vk
 import requests
@@ -8,33 +9,36 @@ import validators
 import json
 from joblib import Parallel, delayed
 import time
+#основная информация про интернет соединение
 URL = 'https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString=&Statuses%5B0%5D.Selected=true&Statuses%5B0%5D.Name=%D0%BF%D0%BE%D0%B1%D0%B5%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C+%D0%BA%D0%BE%D0%BD%D0%BA%D1%83%D1%80%D1%81%D0%B0'
 HEADERS = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0', 'accept': '*/*'}
 HOST = 'https://xn--80afcdbalict6afooklqi5o.xn--p1ai/'
 FILE = 'ans.csv'
-def checkNet():
+def checkNet():   #проверяем работает ли интернет
     try:
         requests.get("http://www.google.com",timeout=10)
-        return 1
+        return 1           #работает 
     except requests.ConnectionError:
-        return 0
-def aboutli(data):
-    if(str(data).find('</li>')!=-1):
-        new_data=''
-        str_li=data.find_all('li')
-        for stroka in str_li:
-            new_data=new_data+(stroka.text.rstrip().rstrip())+'\n'
-        return new_data
+        return 0           #не работает
+def aboutli(data):         #перенос строки data которая сделана как список
+    if(str(data).find('</li>')!=-1):  #если есть элемент списка
+        new_data='' #новый ответ
+        str_li=data.find_all('li') #ищем все <li> элемента списка
+        for stroka in str_li: #пробегаемся по ним
+            new_data=new_data+(stroka.text.rstrip().rstrip())+'\n' #удаляем пробелы и переносим на следующую строчку
+        return new_data     #вернуит обработанный текст
     else:
-        return data.text
+        return data.text    #вернуть изначальный "обычный" текст
 def delete_extra_spaces(s):
-    s=s.replace('Краткое описание','')
+    #удаляем префиксы, которые и так написаны в название столбца
+    s=s.replace('Краткое описание','') 
     s=s.replace('Обоснование социальной значимости','')
     s=s.replace('Цель\n','')
     s=s.replace('Задачи\n','')
     s=s.replace('География проекта','')
     s=s.replace('Целевые группы','')
     st=""
+    #удаляем ненужные пробелы и переносы строк, которые мешают читать данные
     s=s.strip()
     for i in range(len(s)):
         n=s.find(" ")
@@ -44,15 +48,15 @@ def delete_extra_spaces(s):
         st=st+s[:n]+' '
         s=s[n+1:]
         s=s.lstrip()
-    return st.rstrip()
+    return st.rstrip() #возвращаем обработанный текст
 def get_html(url,params=None): # делаем запрос на html страничку
-    while(checkNet()==0):
+    while(checkNet()==0): #ждем пока будет интернет соедиение
         print('Отсутсвие интернет соединение. Подключите интернет для продолжения работы')
     try:
-        r = requests.get(url, headers=HEADERS, params=params,timeout=60) #timeout
+        r = requests.get(url, headers=HEADERS, params=params,timeout=60) #делаем запрос на страницу максимальный отклик 60секунд
         return r
     except:
-        return 'ПРОПУСК'
+        return 'ПРОПУСК' #иначе считаем что она не работает
 def getVariantsOfWords(word): # получаем слово в нормальной кодировке]
     trans = '[]{}0123456789.,!@\"#№;$%^:&?*()\'\\/|' # 'плохие' символы
     for c in trans:
@@ -88,8 +92,8 @@ def getVariantsOfWords(word): # получаем слово в нормальн�
             res = res + c
     words.append(res)
     return words # возвращаем маленькими, с большой, большие
-def get_pages_count(html):
-    soup = BeautifulSoup(html, 'html.parser')
+def get_pages_count(html): #cчитаем количество страниц
+    soup = BeautifulSoup(html, 'html.parser') 
     pagination = soup.find_all('li', class_='pagination__item')
     if pagination:
         return int(pagination[-1].get_text())
@@ -111,7 +115,7 @@ def NameCheck(string,code1,code2): #Можно ли расшифровать sti
         return False
     else:
         return True #все верно
-def get_true_followers(s):
+def get_true_followers(s): #обробатываем 'плохую' строчку с подписчиками
     s=str(s)
     s = s.replace(',', '.')
     s = s.replace(chr(160), ' ')
@@ -125,10 +129,10 @@ def get_true_followers(s):
     s = s.replace(' подписчика', '')
     s = s.replace(' подписчик', '')   
     try:
-        return int(float(s))
+        return int(float(s)) #возвращаем кол-во подписчиков
     except:
         return 0
-def get_links_from_page(HTML2):
+def get_links_from_page(HTML2): #ищем все ссылки, которые можно найти на сайте
     links = set()
     try:
         soup = BeautifulSoup(HTML2, 'html.parser')
@@ -140,18 +144,6 @@ def get_links_from_page(HTML2):
     except:
         return links
     return links
-def InstFollowers(url_name):
-    try:
-        url_name=url_name+'?__a=1'
-        HTML2=get_html(url_name).text
-        if(HTML2!='ПРОПУСК'):
-            HTML2=HTML2.text
-            data = json.loads(HTML2)
-            return(data['graphql']['user']['edge_followed_by']['count'])
-        else:
-            return 0
-    except:
-        return 0
 def find_number_youtube(index,string): # ищем следующее число после строки
     KolKov=0
     stroka=''
@@ -163,7 +155,7 @@ def find_number_youtube(index,string): # ищем следующее число 
         if(KolKov==4 and string[i]!=chr(34)):
             stroka=stroka+string[i]
     return stroka
-def YoutubeFollowers(url):
+def YoutubeFollowers(url): #cчитаем количество подписчиков для ютуба
     try:
         HTML_youtube=get_html(url)
         if(HTML_youtube!='ПРОПУСК'):
@@ -178,7 +170,7 @@ def YoutubeFollowers(url):
             return 0
     except:
         return 0
-def get_social_links(links):
+def get_social_links(links): #ищем из всех ссылок ссылки на соц. сети
     prefixes = [['https://www.youtube.com/channel/','http://www.youtube.com/', 'https://www.youtube.com/user/','https://www.youtube.com/c/'], ['https://vk.com/'], ['https://www.instagram.com/']]
     youtube = []
     youtube_links=set()
@@ -219,13 +211,7 @@ def get_social_links(links):
                 val = follow
         youtube_count = val
     vk_count=0
-    if (len(inst) != 0):
-        val = -1
-        for link in inst:
-            follow = InstFollowers(link) 
-            if (follow > val):
-                val = follow
-        inst_count = val
+    inst_count = 0
     if(a==0):
         youtube_links='Нет аккаунта'
     if(b==0):
@@ -233,13 +219,13 @@ def get_social_links(links):
     if(c==0):
         inst_links='Нет аккаунта'
     return youtube_count,vk_count,inst_count,youtube_links,vk_links,inst_links  
-def Found_year(string):
+def Found_year(string): #из строчки вытаскиваем цифры (которые дают нам год)
     year=''
     for a in string:
         if(a.isdigit()==True):
             year=year+a
     return year
-def VKFollowers(url_name):
+def VKFollowers(url_name): #находим кол-во подписчиков ВК
     url_name=url_name.rstrip().lstrip()
     podpisota=0
     if(url_name.find('public')!=-1):
@@ -260,7 +246,7 @@ def VKFollowers(url_name):
     except:
         podpisota=podpisota
     return podpisota
-def file_saving():
+def file_saving(): #cохраняем файл
     token = "3fb7074e3fb7074e3fb7074e373fc20ea433fb73fb7074e6000a2640396190c4d381005"  # Сервисный ключ доступа
     session = vk.Session(access_token=token)
     vk_api = vk.API(session)
@@ -271,9 +257,10 @@ def file_saving():
             follow=0
             for site in grant['Ссылки на соц. сети в VK']:
                 if(site!='Нет аккаунта'):
-                    follow=max(follow,VKFollowers(site))
+                    follow=max(follow,VKFollowers(site)) #cчитаем подписчиков в ВК
             if(follow==0):
                 follow='Нет аккаунта'
+            #сохраняем в csv файл информацию о конкурсе
             writer.writerow([grant['Год конкурса гранта'],grant['размер гранта'],grant['перечислено фондом'],grant['конкурс'],grant['регион получателя гранта'],grant['направление'],grant['название проекта'],grant['рейтинг проекта'],grant['номер заявки'],grant['дата подачи'],grant['срок реализации'],grant['организация'],grant['инн орагнизации'],grant['огрн организации'],grant['софинансирование'],grant['краткое описание'],grant['цель'],grant['задачи'],grant['социальная значимость'],grant['география проекта'],grant['целевая группа проекта'],grant['адрес организации'],grant['веб-сайт организации'],grant['Работает ли сайт?'],grant['title сайта организации'],grant['description сайта организации'],grant['keywords сайта организации'],grant['Cайт принадлежит организации?'],grant['Ссылки на соц. сети в Instagramm'],follow,grant['Ссылки на соц. сети в VK'],grant['Количество подписчиков youtube'],grant['Ссылки на соц. сети в youtube']])
 def urlChecker(url): #работает ли сайт?
     try:
@@ -288,7 +275,7 @@ def urlChecker(url): #работает ли сайт?
         return (r.status_code == 200 or r.status_code==403 or r.status_code==418)
     except:
         return False
-def decode(string):
+def decode(string): #декодируем строку 
     all_code = ['UTF-8','cp1251','latin1'] #возможные виды кодировок
     chk=0
     for code_in_all1 in all_code:
@@ -302,7 +289,7 @@ def decode(string):
             string=string.encode(code1).decode(code2) #декодируем
             return string,code1,code2
     return 'У сайта неизвестная кодировка','UTF-8', 'UTF-8'
-def is_site_correct(html_str, all_names,code1,code2):
+def is_site_correct(html_str, all_names,code1,code2): #принадлежит ли сайт организации?
     allwords=getVariantsOfWords(all_names)
     for name in allwords:
         trans = '[]{}0123456789.,!@\"#№;$%^:&?*()\'\\/|' # 'плохие' символы
@@ -325,34 +312,34 @@ def is_site_correct(html_str, all_names,code1,code2):
         except:
             return False
     return False
-def process(url_item):
+def process(url_item): #по ссылке ищем всю информацию о гранте
     if(url_item!=None):
         html_item = (get_html(url_item))
         html_item=html_item.text
         soup_item = BeautifulSoup(html_item, 'html.parser')
         all_data = soup_item.find_all('li',class_='winner-info__list-item')
-        money=soup_item.find_all('span',class_='circle-bar__info-item-number')
-        project_price=money[0].text                            #размер гранта
-        fond_invest=money[2].text                    #перечислено фондом
-        title=soup_item.find(class_='winner-info__title').text                                 #название проекта
-        url_new_data='https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString='+title                                            
-        url_new_data=url_new_data.strip()
+        money=soup_item.find_all('span',class_='circle-bar__info-item-number') 
+        project_price=money[0].text                              # размер гранта
+        fond_invest=money[2].text                                # перечислено фондом
+        title=soup_item.find(class_='winner-info__title').text   # название проекта
+        url_new_data='https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString='+title  # ссылка на изначальную страницу                                          
+        url_new_data=url_new_data.strip() 
         html_new_get=(get_html(url_new_data)).text
         soup_new_get=BeautifulSoup(html_new_get, 'html.parser')
         try:
-            region=(soup_new_get.find('div',class_='projects__descr')).find('div').text                     #регион получателя гранта
+            region=(soup_new_get.find('div',class_='projects__descr')).find('div').text         # регион получателя гранта
         except:
             region='Не найдено'
         try:
-            direction=soup_new_get.find('div',class_='direction').text
+            direction=soup_new_get.find('div',class_='direction').text                          # направление гранта
         except:
             direction='Не найдено'
-        contest=all_data[0].find('span',class_='winner-info__list-item-text').text #конкурс
+        contest=all_data[0].find('span',class_='winner-info__list-item-text').text               # конкурс 
         rating = all_data[2].find('span',class_='winner-info__list-item-text').text              # рейтинг проекта
         number_request = all_data[3].find('span',class_='winner-info__list-item-text').text      # номер заявки
         date_request = all_data[4].find('span',class_='winner-info__list-item-text').text        # дата подачи
         date_realization = all_data[5].find('span',class_='winner-info__list-item-text').text    # срок реализации
-        organization = all_data[6].find('span',class_='winner-info__list-item-text').text         # организация
+        organization = all_data[6].find('span',class_='winner-info__list-item-text').text        # организация
         inn = all_data[7].find('span',class_='winner-info__list-item-text').text                 # инн орагнизации
         orgn = all_data[8].find('span',class_='winner-info__list-item-text').text                # огрн орнанизации
         sofinance = money[1].text     # софинансирование
@@ -361,15 +348,15 @@ def process(url_item):
         winner_summary=aboutli(all_dop_data[0])                                                      # краткое описание
         winner_aim=aboutli(all_dop_data[1])                                                          # цель
         winner_tasks=aboutli(all_dop_data[2])                                                        # задачи
-        winner_social=aboutli(all_dop_data[3])                                                      # социальная значимость 
+        winner_social=aboutli(all_dop_data[3])                                                       # социальная значимость 
         winner_geo=aboutli(all_dop_data[4])                                                          # география проекта
         winner_target=aboutli(all_dop_data[5])                                                       # целевая группа проекта
-        winner_contacts=all_dop_data[6]                                                         # контакты организации
-        winner_adress=winner_contacts.find('span',class_='winner__details-contacts-item').text   # адрес организации  
+        winner_contacts=all_dop_data[6]                                                              # контакты организации
+        winner_adress=winner_contacts.find('span',class_='winner__details-contacts-item').text       # адрес организации  
         try:
-            winner_site=winner_contacts.find('a',class_='winner__details-contacts-item winner__details-contacts-item--link').get('href') #ccылка на веб-сайт
+            winner_site=winner_contacts.find('a',class_='winner__details-contacts-item winner__details-contacts-item--link').get('href') # ccылка на веб-сайт
         except:
-            winner_site='Нет'#ccылка на веб-сайт
+            winner_site='Нет'
         #################################
         try:
             if(winner_site==None or winner_site=='Нет'):
@@ -507,33 +494,33 @@ def get_content_from_main(html):
     for item in items:
         URL = 'https://xn--80afcdbalict6afooklqi5o.xn--p1ai'
         if(item!=None):   
-            url_item = URL+item.get('href')
-            url_item = url_item.strip()
-            urls_items.append(url_item)
+            url_item = URL+item.get('href')   # узнаем ссылку
+            url_item = url_item.strip()       # редактируем данные
+            urls_items.append(url_item)       # добавляем все ссылки из сатйа
     try:
-        all_grants=all_grants+Parallel(n_jobs=8, verbose=100)(delayed(process)(url_item) for url_item in urls_items)
+        all_grants=all_grants+Parallel(n_jobs=8, verbose=100)(delayed(process)(url_item) for url_item in urls_items)       # параллелим процесс с 8 ядрами
     except:
-        try:                                                                                                               # это убрать  
-            all_grants=all_grants+Parallel(n_jobs=1, verbose=100)(delayed(process)(url_item) for url_item in urls_items)   # это убрать
-        except:                                                                                                            # это убрать
-            print('Не хватает мощности')                                                                                   # -tab
-def parse(URL):
+        try:                                                                                                              
+            all_grants=all_grants+Parallel(n_jobs=1, verbose=100)(delayed(process)(url_item) for url_item in urls_items)   # если на работает с 8 ядрами запускаем для одного  
+        except:                                                                                                            
+            print('Не хватает мощности')                                                                                   # если не работает с 1 ядром
+def parse(URL): #парсим страницу
     URL = URL.strip()
-    try:
+    try: 
         URL_COUNT='https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString=&Statuses%5B0%5D.Selected=true&Statuses%5B0%5D.Name=%D0%BF%D0%BE%D0%B1%D0%B5%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C+%D0%BA%D0%BE%D0%BD%D0%BA%D1%83%D1%80%D1%81%D0%B0&&page=501'
         URL_COUNT = URL_COUNT.strip()
-        html = get_html(URL_COUNT)
+        html = get_html(URL_COUNT) #ищем кол-во 'скрытых' страниц
         if(html!='ПРОПУСК'):
             pages_count = get_pages_count(html.text)
         else:
             print('Нет доступа к интернету, перезапустите программу когда он появится...')
             sys.exit()
-    except:
+    except: #если скрытых страниц нет
         URL_COUNT='https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString=&Statuses%5B0%5D.Selected=true&Statuses%5B0%5D.Name=%D0%BF%D0%BE%D0%B1%D0%B5%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C+%D0%BA%D0%BE%D0%BD%D0%BA%D1%83%D1%80%D1%81%D0%B0'
         URL_COUNT = URL_COUNT.strip()
         html = get_html(URL_COUNT)
         if(html!='ПРОПУСК'):
-            pages_count = get_pages_count(html.text)
+            pages_count = get_pages_count(html.text) #ищем кол-во открытых страниц
         else:
             print('Нет доступа к интернету, перезапустите программу когда он появится...')
             sys.exit()      
@@ -545,9 +532,9 @@ def parse(URL):
             get_content_from_main(html.text)
         else:
             print('Страница не найдена...')
-start_time = time.time()
+start_time = time.time() #запуск таймера
 all_grants=[]
-parse(URL)
-file_saving()
-print("--- %s seconds ---" % (time.time() - start_time))
+parse(URL) #парсим сайт с URL где можно найти только победителев
+file_saving() #сохраняем информацию
+print("--- %s seconds ---" % (time.time() - start_time)) #время выполнения программы
 
