@@ -321,8 +321,15 @@ def process(url_item): #по ссылке ищем всю информацию �
         project_price=money[0].text                              # размер гранта
         fond_invest=money[2].text                                # перечислено фондом
         title=soup_item.find(class_='winner-info__title').text   # название проекта
-        url_new_data='https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString='+title  # ссылка на изначальную страницу                                          
+        if(title.find('...')!=-1):
+            titel_find = title.split()
+            rm = titel_find[:-1]
+            new_find = ' '.join([str(elem) for elem in rm])
+        else:
+            new_find=title
+        url_new_data='https://xn--80afcdbalict6afooklqi5o.xn--p1ai/public/application/cards?SearchString='+new_find  # ссылка на изначальную страницу                                          
         url_new_data=url_new_data.strip() 
+        print(url_new_data)
         html_new_get=(get_html(url_new_data)).text
         soup_new_get=BeautifulSoup(html_new_get, 'html.parser')
         try:
