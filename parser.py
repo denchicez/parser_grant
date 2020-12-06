@@ -6,7 +6,6 @@ import requests
 import csv
 import sys
 import validators
-import json
 from joblib import Parallel, delayed
 import time
 #основная информация про интернет соединение
