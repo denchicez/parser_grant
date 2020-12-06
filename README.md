@@ -8,6 +8,7 @@
 - pip3 install requests
 - pip3 install vk
 - pip3 install validators
+- pip3 install joblib
 ```
 ## Run script
 ### Script template
