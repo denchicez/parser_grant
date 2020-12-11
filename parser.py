@@ -290,6 +290,41 @@ def decode(string): #декодируем строку
     return 'У сайта неизвестная кодировка','UTF-8', 'UTF-8'
 def is_site_correct(html_str, all_names,code1,code2): #принадлежит ли сайт организации?
     allwords=getVariantsOfWords(all_names)
+    allwords=allwords.replace('ООО','')
+    allwords=allwords.replace('Ооо','')
+    allwords=allwords.replace('ооо','')
+    
+    allwords=allwords.replace('ИП','')
+    allwords=allwords.replace('Ип','')
+    allwords=allwords.replace('ип','')
+    
+    allwords=allwords.replace('АО','')
+    allwords=allwords.replace('Ао','')
+    allwords=allwords.replace('ао','')
+    
+    allwords=allwords.replace('ПАО','')
+    allwords=allwords.replace('Пао','')
+    allwords=allwords.replace('пао','')
+    
+    allwords=allwords.replace('НКО','')
+    allwords=allwords.replace('Нко','')
+    allwords=allwords.replace('нко','')
+    
+    allwords=allwords.replace('ОП','')
+    allwords=allwords.replace('Оп','')
+    allwords=allwords.replace('оп','')
+    
+    allwords=allwords.replace('АССОЦИАЦИЯ','')
+    allwords=allwords.replace('Ассоциация','')
+    allwords=allwords.replace('ассоциация','')
+    
+    allwords=allwords.replace('ОБЩЕСТВО','')
+    allwords=allwords.replace('Общество','')
+    allwords=allwords.replace('общество','')
+    
+    allwords=allwords.replace('КОРПОРАЦИЯ','')
+    allwords=allwords.replace('Корпорация','')
+    allwords=allwords.replace('корпорация','')
     for name in allwords:
         trans = '[]{}0123456789.,!@\"#№;$%^:&?*()\'\\/|' # 'плохие' символы
         for c in trans:
@@ -301,7 +336,7 @@ def is_site_correct(html_str, all_names,code1,code2): #принадлежит л
         words = name.split() # делим на слова
         buff = []
         for word in words:
-            if (len(word) > 2):
+            if (len(word) > 3):
                 buff.append(word) # удаляем короткие, добовляем хорошие
         words = buff
         try:
