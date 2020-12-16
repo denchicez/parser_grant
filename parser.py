@@ -466,7 +466,6 @@ def process(url_item): #по ссылке ищем всю информацию �
                         keywords_org_site='Не найдено'
                     if(keywords_org_site==''):
                         keywords_org_site='Отсутсвует'
-                    print(organization)
                     a=is_site_correct(HTML2,organization,code1,code2)
                     b=is_site_correct(HTML2,winner_summary,code1,code2)
                     if(a==True or b==True):
