@@ -567,7 +567,7 @@ def parse(URL): #парсим страницу
         else:
             print('Нет доступа к интернету, перезапустите программу когда он появится...')
             sys.exit()      
-    for page in range(1,1+1): #pages_count
+    for page in range(1,pages_count+1): #pages_count
         print(f'Парсинг страницы {page} из {pages_count}...')
         html=get_html(URL, params={'page': page})
         if(html!='ПРОПУСК'):
