@@ -250,7 +250,7 @@ def file_saving(): #cохраняем файл
     session = vk.Session(access_token=token)
     vk_api = vk.API(session)
     with open(FILE, 'w', newline="",errors='ignore') as file:
-        writer = csv.writer(file, delimiter=',')
+        writer = csv.writer(file, delimiter=';')
         writer.writerow(['Год конкурса гранта','размер гранта','перечислено фондом','конкурс','регион получателя гранта','направление','название проекта','рейтинг проекта','номер заявки','дата подачи','срок реализации','организация','инн орагнизации','огрн организации','софинансирование','краткое описание','цель','задачи','социальная значимость','география проекта','целевая группа проекта','адрес организации','веб-сайт организации','Работает ли сайт?','title сайта организации','description сайта организации','keywords сайта организации','Cайт принадлежит организации?','Ссылки на соц. сети в Instagramm','Количество подписчиков VK','Ссылки на соц. сети в VK','Количество подписчиков youtube','Ссылки на соц. сети в youtube'])
         for grant in all_grants:
             follow=0
@@ -290,42 +290,42 @@ def decode(string): #декодируем строку
     return 'У сайта неизвестная кодировка','UTF-8', 'UTF-8'
 def is_site_correct(html_str, all_names,code1,code2): #принадлежит ли сайт организации?
     allwords=getVariantsOfWords(all_names)
-    allwords=allwords.replace('ООО','')
-    allwords=allwords.replace('Ооо','')
-    allwords=allwords.replace('ооо','')
-    
-    allwords=allwords.replace('ИП','')
-    allwords=allwords.replace('Ип','')
-    allwords=allwords.replace('ип','')
-    
-    allwords=allwords.replace('АО','')
-    allwords=allwords.replace('Ао','')
-    allwords=allwords.replace('ао','')
-    
-    allwords=allwords.replace('ПАО','')
-    allwords=allwords.replace('Пао','')
-    allwords=allwords.replace('пао','')
-    
-    allwords=allwords.replace('НКО','')
-    allwords=allwords.replace('Нко','')
-    allwords=allwords.replace('нко','')
-    
-    allwords=allwords.replace('ОП','')
-    allwords=allwords.replace('Оп','')
-    allwords=allwords.replace('оп','')
-    
-    allwords=allwords.replace('АССОЦИАЦИЯ','')
-    allwords=allwords.replace('Ассоциация','')
-    allwords=allwords.replace('ассоциация','')
-    
-    allwords=allwords.replace('ОБЩЕСТВО','')
-    allwords=allwords.replace('Общество','')
-    allwords=allwords.replace('общество','')
-    
-    allwords=allwords.replace('КОРПОРАЦИЯ','')
-    allwords=allwords.replace('Корпорация','')
-    allwords=allwords.replace('корпорация','')
     for name in allwords:
+        name=name.replace(' ООО ','')
+        name=name.replace(' Ооо ','')
+        name=name.replace(' ооо ','')
+        
+        name=name.replace(' ИП ','')
+        name=name.replace(' Ип ','')
+        name=name.replace(' ип ','')
+        
+        name=name.replace(' АО ','')
+        name=name.replace(' Ао ','')
+        name=name.replace(' ао ','')
+        
+        name=name.replace(' ПАО ','')
+        name=name.replace(' Пао ','')
+        name=name.replace(' пао ','')
+        
+        name=name.replace(' НКО ','')
+        name=name.replace(' Нко ','')
+        name=name.replace(' нко ','')
+        
+        name=name.replace(' ОП ','')
+        name=name.replace(' Оп ','')
+        name=name.replace(' оп ','')
+        
+        name=name.replace(' АССОЦИАЦИЯ ','')
+        name=name.replace(' Ассоциация ','')
+        name=name.replace(' ассоциация ','')
+        
+        name=name.replace(' ОБЩЕСТВО ','')
+        name=name.replace(' Общество ','')
+        name=name.replace(' общество ','')
+        
+        name=name.replace(' КОРПОРАЦИЯ ','')
+        name=name.replace(' Корпорация ','')
+        name=name.replace(' корпорация ','')
         trans = '[]{}0123456789.,!@\"#№;$%^:&?*()\'\\/|' # 'плохие' символы
         for c in trans:
             name = name.replace(c, '') # убираем их
@@ -466,6 +466,7 @@ def process(url_item): #по ссылке ищем всю информацию �
                         keywords_org_site='Не найдено'
                     if(keywords_org_site==''):
                         keywords_org_site='Отсутсвует'
+                    print(organization)
                     a=is_site_correct(HTML2,organization,code1,code2)
                     b=is_site_correct(HTML2,winner_summary,code1,code2)
                     if(a==True or b==True):
@@ -566,7 +567,7 @@ def parse(URL): #парсим страницу
         else:
             print('Нет доступа к интернету, перезапустите программу когда он появится...')
             sys.exit()      
-    for page in range(1,pages_count+1): #pages_count
+    for page in range(1,1+1): #pages_count
         print(f'Парсинг страницы {page} из {pages_count}...')
         html=get_html(URL, params={'page': page})
         if(html!='ПРОПУСК'):
